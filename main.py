@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 import re
 
-numbers_spelled = ['one','two','three','four','five','six','seven','eight','nine','ten']
+
 def extract_text_from_pdf_pymupdf(pdf_path):
     text = ""
     doc = fitz.open(pdf_path)
@@ -20,43 +20,75 @@ def clean_text(text):
     cleaned_text = ' '.join(cleaned_lines).replace(":","")
     return cleaned_text
 
+def process_matches(matches, information, sum_threshold):
+    sum = 0
+    for match in matches:
+        try:
+            category, percentage, each = match
+            total_percentage = 0
+            key = category.lower().title()
+        
+            # Check for "each" and multiply by spelled numbers in the category if present
+            if each:
+                numbers_spelled = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+                for number_word in numbers_spelled:
+                    if number_word in category.lower():
+                        # Multiply by the corresponding numeric value
+                        multiplier = numbers_spelled.index(number_word) + 1
+                        percentage = float(percentage) * multiplier
+                        break
+        
+            # Check for duplicates and modify key
+            while key in information:
+                key = f"second_{key}"
+        
+            if total_percentage + float(percentage) <= sum_threshold or not key.startswith("second_"):
+                information[key] = float(percentage)
+                total_percentage += float(percentage)
+            else:
+                print(f"Skipping '{key}' as adding the current percentage exceeds {sum_threshold}%.")
+        
+            sum += float(percentage)
+        except Exception as e:
+            print(f"Error processing match: {e}")
+
+    return sum
+
 def extract_assignments(file_content):
     information = {}
-    
-    
-    pattern = r"(\b(?:labs|exam[12]|project|quizzes|attendance|homework)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
-    pattern += r"(?!.*?\b(?:dropped|extension)\b)"
+    sum_threshold = 100
+
+    pattern = r"(\b(?:labs|exam[12]|project|quizzes|attendance|exams|homework|final)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|report|drawing|contour|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
+    pattern += r"(?!.*?\b(?:dropped|extension|on least)\b)"
+    pattern_2 = r"(\b(?:labs|exam[12]|project|quizzes|attendance|homework)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|contour|drawing|report|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)pts(\s*each)?"
+    pattern_3 = r"(?:\b(\w+)\s+\1\b.*?)(?:\d+(?:[.]\d+)?%.*?(\d+(?:[.]\d+)?)%|\d+(?:[.]\d+)%)( )"
+    pattern_4 = r"(\b(?:labs|exam[12]|project|quizzes|attendance|exams|homework|final)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|report|drawing|contour|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
+
     matches = re.findall(pattern, file_content, re.IGNORECASE)
+    matches_2 = re.findall(pattern_2, file_content, re.IGNORECASE)
     
-    for match in matches:
-        category, percentage, each = match
-        total_percentage = 0
-        key = category.lower()
-        
-        # Check for "each" and multiply by spelled numbers in the category if present
-        if each:
-            numbers_spelled = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
-            for number_word in numbers_spelled:
-                if number_word in category.lower():
-                    # Multiply by the corresponding numeric value
-                    multiplier = numbers_spelled.index(number_word) + 1
-                    percentage = float(percentage) * multiplier
-                    break
-        
-        # Check for duplicates and modify key
-        while key in information:
-            key = f"second_{key}"
-        
-        if total_percentage + float(percentage) <= 100 or not key.startswith("second_"):
-            information[key] = float(percentage)
-            total_percentage += float(percentage)
-        else:
-            print(f"Skipping '{key}' as adding the current percentage exceeds 100%.")
-    
+    if len(matches_2) > len(matches):
+        matches = matches_2
+
+    # Process initial matches
+    sum = process_matches(matches, information, sum_threshold)
+
+    # If the sum is still less than 100, add pattern_3 matches
+    if sum < sum_threshold:
+        matches_3 = re.findall(pattern_3, file_content, re.IGNORECASE)
+        sum += process_matches(matches_3, information, sum_threshold - sum)
+
+    # If the sum is still less than 100, add pattern_4 matches
+    if sum < sum_threshold:
+        matches_4 = re.findall(pattern_4, file_content, re.IGNORECASE)
+        process_matches(matches_4, information, sum_threshold - sum)
+
     return information
 
+
+
 def main():
-    pdf_path = 'syllabus6.pdf'
+    pdf_path = 'syllabus12.pdf'
     output_file_path = 'output_cleaned.txt'
     
     
