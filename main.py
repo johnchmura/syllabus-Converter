@@ -58,8 +58,10 @@ def extract_assignments(file_content):
     information = {}
     sum_threshold = 100
 
-    pattern = r"(\b(?:labs|exam[12]|project|quizzes|attendance|exams|homework|final)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|report|drawing|contour|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
-    pattern += r"(?!.*?\b(?:dropped|extension|on least)\b)"
+    
+
+    pattern = r"(\b(?:labs|exam[12]|project|quizzes|attendance|exams|homework|final)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|report|assignments|participation|drawing|visit|contour|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
+    pattern += r"(?!.*?\b(?:dropped|extension|on the departmental|on the final|of your final)\b)"
     pattern_2 = r"(\b(?:labs|exam[12]|project|quizzes|attendance|homework)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|contour|drawing|report|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)pts(\s*each)?"
     pattern_3 = r"(?:\b(\w+)\s+\1\b.*?)(?:\d+(?:[.]\d+)?%.*?(\d+(?:[.]\d+)?)%|\d+(?:[.]\d+)%)( )"
     pattern_4 = r"(\b(?:labs|exam[12]|project|quizzes|attendance|exams|homework|final)\b|\w+\s*[-]?\s*\w*\s*(?:quiz|report|drawing|contour|prelectures|checkpoints|final|quizzes|exam\w*|homework|labs|exercises|exam1|count for|worth|lab|midterm)\b).*?(\d+(?:[.]\d+)?)%(\s*each)?"
@@ -70,9 +72,17 @@ def extract_assignments(file_content):
     if len(matches_2) > len(matches):
         matches = matches_2
 
+    count = 0
+    for i in range(len(matches)):
+        if count + float(matches[i][1]) > 100:
+            matches = matches[:i]
+            break
+        else:
+            count += float(matches[i][1]) 
+        
     # Process initial matches
     sum = process_matches(matches, information, sum_threshold)
-
+    
     # If the sum is still less than 100, add pattern_3 matches
     if sum < sum_threshold:
         matches_3 = re.findall(pattern_3, file_content, re.IGNORECASE)
@@ -88,6 +98,7 @@ def extract_assignments(file_content):
 
 
 def main():
+        
     pdf_path = 'syllabus12.pdf'
     output_file_path = 'output_cleaned.txt'
     
