@@ -1,6 +1,7 @@
 from pdf_extraction import extract_text_from_pdf_pymupdf, clean_text, extract_assignments
 from google_export import update_google_sheet
 
+
 def main():
     pdf_path = 'syllabus1.pdf'
     output_file_path = 'output_cleaned.txt'
@@ -20,7 +21,7 @@ def main():
             for assignment_type, percentage in assignments.items():
                 print(f"{assignment_type}: {percentage}%")
 
-            # Update Google Sheet with the results
+            
             update_google_sheet(assignments)
 
     except FileNotFoundError:
